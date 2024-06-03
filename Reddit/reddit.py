@@ -1,7 +1,9 @@
 import praw
-import pandas as pd
-import time
+import sys
 import warnings
+
+sys.path.append("..")
+import tool
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 # a script-type OAuth application
@@ -15,52 +17,51 @@ reddit = praw.Reddit(
 subreddits = ['beer', 'cocktails', 'whiskey', 'wine', 'scotch', 'trquila', 'rum', 'gin', 'homebrewing',
               'BarBattlestations', 'stopdrinking', 'drunk', 'liquor', 'vodta', 'brandy']
 
-Post_limit = 1  # number of posts for each Reddit Communities
-comment_limit = 1  # number of comment_ for each Reddit Communities
+Post_limit = 50  # number of posts for each Reddit Communities
+
+posts_data = []
 
 
 def get_data():
-    post_data = pd.DataFrame(columns=['id', 'Community', 'author', 'url', 'timestamp', 'text', 'upvote', 'upvote_ratio'])
-    comment_data = pd.DataFrame(columns=['id', 'Community', 'author', 'url', 'timestamp', 'body', 'upvote'])
     for subreddit in subreddits:
-
+        print(f'Get Data from {subreddit}.......')
         try:
             # get Posts
             posts = reddit.subreddit(subreddit)
-            for submission in posts.top(limit=Post_limit):
-                new_row = pd.DataFrame({
-                    'id': [submission.id],  # ID of the submission.
-                    'Community': [subreddit], # # subreddit
-                    'author': [''] if submission.author is None else [submission.author.name],  # name of author
-                    'url': ['https://www.reddit.com' + submission.permalink],  # A permalink for the submission.
-                    'timestamp': [submission.created_utc],  # Time the submission was created, represented in `Unix Time`_.
-                    'text': [submission.selftext],  # The submissions' selftext - an empty string if a link post.
-                    'upvote': [submission.score],  # The number of upvotes for the submission.
-                    'upvote_ratio': [submission.upvote_ratio]  # The percentage of upvotes from all votes on the submission.
-                })
-                post_data = pd.concat([post_data, new_row], ignore_index=True)
+            for submission in posts.hot(limit=Post_limit):
+                post_info = {
+                    'id': submission.id,  # ID of the submission.
+                    'Community': subreddit,  # # subreddit
+                    'author': '' if submission.author is None else submission.author.name,  # name of author
+                    'url': 'https://www.reddit.com' + submission.permalink,  # A permalink for the submission.
+                    'timestamp': submission.created_utc,
+                    # Time the submission was created, represented in `Unix Time`_.
+                    'text': submission.selftext,  # The submissions' selftext - an empty string if a link post.
+                    'upvote': submission.score,  # The number of upvotes for the submission.
+                    'upvote_ratio': submission.upvote_ratio,
+                    # The percentage of upvotes from all votes on the submission.
+                    'comments': []
+                }
 
-            # get comments
-            i = 0
-            for comment in reddit.subreddit(subreddit).stream.comments():
-                if i >= comment_limit:
-                    break
-                new_row = pd.DataFrame({
-                    'id': [comment.id],  # The ID of the comment.
-                    'Community': [subreddit],  # subreddit
-                    'author': [''] if comment.author is None else [comment.author.name],  # name of author
-                    'url': ['https://www.reddit.com' + comment.permalink],  # A permalink for the comment.
-                    'timestamp': [comment.created_utc],  # Time the comment was created, represented in `Unix Time`_.
-                    'body': [comment.body],  # The body of the comment, as Markdown.
-                    'upvote': [comment.score]  # The number of upvotes for the comment.
-                })
-                comment_data = pd.concat([comment_data, new_row], ignore_index=True)
-                i += 1
+                # Collect comments for the post
+                submission.comments.replace_more(limit=0)
+                for comment in submission.comments.list():
+                    comment_info = {
+                        'comment_id': comment.id,
+                        'comment_body': comment.body,
+                        'comment_score': comment.score,
+                        'comment_created': comment.created
+                    }
+                    post_info['comments'].append(comment_info)
+
+                posts_data.append(post_info)
+
         except Exception as e:
             print(f'{subreddit} is not available')
 
-    post_data.to_csv(f'data/Reddit_Post_Data_{time.time()}.csv', encoding='utf_8_sig')
-    comment_data.to_csv(f'data/Reddit_Comment_Data_{time.time()}.csv', encoding='utf_8_sig')
+    return posts_data
 
 
-get_data()
+Datas = get_data()
+connect = tool.connect_NoSQL('Reddit')
+tool.insert_data(connect, Datas)

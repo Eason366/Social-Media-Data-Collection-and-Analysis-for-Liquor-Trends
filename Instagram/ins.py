@@ -202,6 +202,7 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
         while True:
             _logger.info(f'Retrieving endCursor = {endCursor!r}')
             variables = self._variablesFormat.format(**locals())
+            headers['Cookie'] = r'datr=c4ZeZVuu3s5mEbItIBoyYp4A; mid=ZadZAgALAAFkezYhF4IZpPCk0ABL; ig_did=DB4B3AE1-D37F-48E7-870F-2159513408BD; ig_nrcb=1; wd=2048x1023; dpr=1.25; csrftoken=5oyF8TwEDeofc4sNfr2K255tMGD2BNSy; ds_user_id=67006055626; sessionid=67006055626%3AgKnowT9GrOpQbW%3A11%3AAYe9Bwnz4QMOirMoTgDOCJPwRwTd3xQXdySKo9AKdw; rur="EAG\05467006055626\0541748978251:01f73b17f74b0b878a420e496544c3226a0b2f0415e6bac0071327c97af55cdb91c009da"'
             r = self._get(
                 f'https://www.instagram.com/graphql/query/?query_hash={self._queryHash}&variables={variables}',
                 headers=headers, responseOkCallback=self._check_json_callback)

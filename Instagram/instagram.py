@@ -1,14 +1,14 @@
+import sys
 import ins as sninstagram
-import pandas as pd
-import time
+sys.path.append("..")
+import tool
 
 hash_tags = ['beer', 'cocktails', 'whiskey', 'wine', 'scotch', 'trquila', 'rum', 'gin', 'homebrewing',
              'BarBattlestations', 'stopdrinking', 'drunk', 'liquor', 'vodta', 'brandy']
 
-ins_s = []
+Datas = []
 limit = 50
 
-df = pd.DataFrame()
 print("*****************START*****************")
 for query in hash_tags:
     i = 0
@@ -36,10 +36,11 @@ for query in hash_tags:
                 'url': url,
                 'medium_url': medium_url
             }
-            df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+            Datas.append(data)
             i += 1
-    except Exception as e:
+    except BaseException as e:
         print(f'Error: Get {query} data')
-        pass
+        continue
 
-df.to_csv(f'Instagram_{time.time()}.csv', encoding='utf_8_sig')
+connect = tool.connect_NoSQL('Instagram')
+tool.insert_data(connect, Datas)
